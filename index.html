@@ -149,20 +149,42 @@ function renderYukyu(app) {
   }
   app.innerHTML = `
     <h2>有給申請</h2>
-    <label>取得日を選んでください</label>
-    <div class="date-grid">
-      ${dates.map(d => `<div class="date-btn" onclick="selectOption(this,'${d.value}')">${d.label}</div>`).join('')}
+    <label>① 取得日を選んでください</label>
+    <div class="date-grid" style="margin-bottom:16px">
+      ${dates.map(d => `<div class="date-btn" onclick="selectDate(this,'${d.value}')">${d.label}</div>`).join('')}
+    </div>
+    <label>② 種別を選んでください</label>
+    <div class="option-grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="option-btn" onclick="selectType(this,'全休')">全休</div>
+      <div class="option-btn" onclick="selectType(this,'午前休')">午前休</div>
+      <div class="option-btn" onclick="selectType(this,'午後休')">午後休</div>
     </div>
     <div class="status" id="status">　</div>
     <button class="btn btn-blue" onclick="doYukyu()">申請する</button>
   `;
 }
 
+let selectedDate = '';
+let selectedType = '';
+
+function selectDate(el, value) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedDate = value;
+}
+
+function selectType(el, value) {
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedType = value;
+}
+
 async function doYukyu() {
-  if (!selectedValue) { document.getElementById('status').textContent = '日付を選択してください'; return; }
+  if (!selectedDate) { document.getElementById('status').textContent = '日付を選択してください'; return; }
+  if (!selectedType) { document.getElementById('status').textContent = '種別を選択してください'; return; }
   document.getElementById('status').textContent = '送信中...';
-  await sendToGas({ type: 'kintai', userId, stampType: '有給申請', yukyuDate: selectedValue, lat: 0, lng: 0 });
-  document.getElementById('status').textContent = `${selectedValue} の有給を申請しました`;
+  await sendToGas({ type: 'kintai', userId, stampType: '有給申請', yukyuDate: selectedDate, yukyuType: selectedType, lat: 0, lng: 0 });
+  document.getElementById('status').textContent = `${selectedDate} ${selectedType}を申請しました`;
   setTimeout(() => liff.closeWindow(), 2000);
 }
 
