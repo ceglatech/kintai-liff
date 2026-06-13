@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>勤怠打刻</title>
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 400px; margin: 0 auto; }
+    h2 { text-align: center; color: #333; }
+    .btn { width: 100%; padding: 16px; margin: 8px 0; font-size: 18px; border: none; border-radius: 8px; cursor: pointer; }
+    .btn-green { background: #06C755; color: white; }
+    .btn-red { background: #E53935; color: white; }
+    .status { text-align: center; margin-top: 20px; font-size: 14px; color: #666; }
+  </style>
+</head>
+<body>
+  <h2>勤怠打刻</h2>
+  <button class="btn btn-green" onclick="stamp('出勤')">出勤</button>
+  <button class="btn btn-red" onclick="stamp('退勤')">退勤</button>
+  <div class="status" id="status">位置情報を取得して打刻してください</div>
+
+  <script>
+    const LIFF_ID = 'YOUR_LIFF_ID';
+    const GAS_URL = 'YOUR_GAS_URL';
+
+    async function init() {
+      await liff.init({ liffId: LIFF_ID });
+      if (!liff.isLoggedIn()) liff.login();
+    }
+
+    async function stamp(type) {
+      document.getElementById('status').textContent = '位置情報を取得中...';
+      try {
+        const profile = await liff.getProfile();
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+          const payload = {
+            type: 'kintai',
+            userId: profile.userId,
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            stampType: type
+          };
+          const res = await fetch(GAS_URL, {
+            method: 'POST',
+            body: JSON.stringify(payload)
+          });
+          document.getElementById('status').textContent = `${type}打刻を送信しました`;
+          setTimeout(() => liff.closeWindow(), 2000);
+        }, (err) => {
+          document.getElementById('status').textContent = '位置情報の取得に失敗しました';
+        });
+      } catch(e) {
+        document.getElementById('status').textContent = 'エラーが発生しました';
+      }
+    }
+
+    init();
+  </script>
+</body>
+</html>
