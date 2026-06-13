@@ -118,15 +118,16 @@ async function doTaikin() {
 }
 
 function renderKyukei(app) {
+  const options = [];
+  for (let i = 0.5; i <= 8; i += 0.5) {
+    options.push(i.toFixed(1));
+  }
   app.innerHTML = `
     <h2>休憩申告</h2>
     <div class="section">
-      <label>休憩時間を選んでください</label>
+      <label>休憩時間を選んでください（上書き保存されます）</label>
       <div class="option-grid option-grid-4">
-        <div class="option-btn" onclick="selectKyukei(this,'0.5')">0.5時間</div>
-        <div class="option-btn" onclick="selectKyukei(this,'1.0')">1時間</div>
-        <div class="option-btn" onclick="selectKyukei(this,'1.5')">1.5時間</div>
-        <div class="option-btn" onclick="selectKyukei(this,'2.0')">2時間</div>
+        ${options.map(o => `<div class="option-btn" onclick="selectKyukei(this,'${o}')">${o}時間</div>`).join('')}
       </div>
       <div class="status" id="status">　</div>
       <button class="btn btn-green" onclick="doKyukei()">送信する</button>
