@@ -1,3 +1,5 @@
+
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -12,17 +14,23 @@
     h2 { text-align: center; font-size: 20px; margin-bottom: 24px; color: #333; }
     .btn { width: 100%; padding: 16px; margin: 8px 0; font-size: 16px; font-weight: bold; border: none; border-radius: 12px; cursor: pointer; }
     .btn-green { background: #06C755; color: white; }
+    .btn-red { background: #E53935; color: white; }
     .btn-gray { background: #888; color: white; }
     .btn-blue { background: #1a73e8; color: white; }
-    .status { text-align: center; margin-top: 16px; font-size: 14px; color: #666; padding: 12px; background: white; border-radius: 8px; }
-    .option-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 8px 0; }
+    .status { text-align: center; margin-top: 16px; font-size: 14px; color: #666; padding: 12px; background: white; border-radius: 8px; min-height: 44px; }
+    .option-grid { display: grid; gap: 10px; margin: 8px 0; }
+    .option-grid-2 { grid-template-columns: 1fr 1fr; }
+    .option-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    .option-grid-4 { grid-template-columns: 1fr 1fr; }
     .option-btn { padding: 20px 8px; font-size: 15px; font-weight: bold; border: 2px solid #ddd; border-radius: 12px; background: white; cursor: pointer; text-align: center; }
     .option-btn.selected { border-color: #06C755; background: #e6f9ee; color: #06C755; }
-    textarea { width: 100%; padding: 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; min-height: 100px; margin: 8px 0; resize: none; }
-    .date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; max-height: 300px; overflow-y: auto; }
+    .option-btn.selected-blue { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; }
+    textarea { width: 100%; padding: 12px; font-size: 14px; border: 1px solid #ddd; border-radius: 8px; min-height: 100px; margin: 8px 0; resize: none; font-family: sans-serif; }
+    .date-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0; max-height: 240px; overflow-y: auto; }
     .date-btn { padding: 12px 8px; font-size: 13px; border: 2px solid #ddd; border-radius: 8px; background: white; cursor: pointer; text-align: center; }
     .date-btn.selected { border-color: #1a73e8; background: #e8f0fe; color: #1a73e8; }
-    label { font-size: 14px; color: #555; display: block; margin-bottom: 6px; }
+    label { font-size: 13px; font-weight: bold; color: #555; display: block; margin: 12px 0 6px; }
+    .section { background: white; border-radius: 12px; padding: 16px; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -35,15 +43,21 @@ const LIFF_ID = '2010385211-xibtXcK9';
 const GAS_URL = 'https://script.google.com/macros/s/AKfycbxSiWegH32qxnlCUpM5R2FDurw_FHtx6nWO8XPmgF34eOzHHGGfzb2G9eiEYuVLyLjukg/exec';
 
 let userId = '';
-let selectedValue = '';
+let selectedKyukei = '';
+let selectedDate = '';
+let selectedYukyuType = '';
 
 async function init() {
-  await liff.init({ liffId: LIFF_ID });
-  if (!liff.isLoggedIn()) { liff.login(); return; }
-  const profile = await liff.getProfile();
-  userId = profile.userId;
-  const type = new URLSearchParams(location.search).get('type') || 'shukkin';
-  renderPage(type);
+  try {
+    await liff.init({ liffId: LIFF_ID });
+    if (!liff.isLoggedIn()) { liff.login(); return; }
+    const profile = await liff.getProfile();
+    userId = profile.userId;
+    const type = new URLSearchParams(location.search).get('type') || 'shukkin';
+    renderPage(type);
+  } catch(e) {
+    document.getElementById('app').innerHTML = '<div class="status">読み込みエラーが発生しました</div>';
+  }
 }
 
 function renderPage(type) {
@@ -62,198 +76,185 @@ function renderPage(type) {
 function renderShukkin(app) {
   app.innerHTML = `
     <h2>出勤打刻</h2>
-    <div class="status" id="status">現在地を取得して打刻します</div>
-    <button class="btn btn-green" style="margin-top:16px" onclick="doShukkin()">出勤する</button>
+    <div class="section">
+      <div class="status" id="status">現在地を取得して打刻します</div>
+      <button class="btn btn-green" style="margin-top:12px" onclick="doShukkin()">出勤する</button>
+    </div>
   `;
 }
 
 async function doShukkin() {
-  document.getElementById('status').textContent = '位置情報を取得中...';
+  setStatus('位置情報を取得中...');
   navigator.geolocation.getCurrentPosition(async (pos) => {
-    document.getElementById('status').textContent = '送信中...';
-    await sendToGas({ type: 'kintai', userId, stampType: '出勤', lat: pos.coords.latitude, lng: pos.coords.longitude });
-    document.getElementById('status').textContent = '出勤打刻しました！';
+    setStatus('送信中...');
+    await sendToGas({
+      type: 'kintai',
+      userId,
+      stampType: '出勤',
+      lat: pos.coords.latitude,
+      lng: pos.coords.longitude
+    });
+    setStatus('出勤打刻しました！');
     setTimeout(() => liff.closeWindow(), 2000);
   }, () => {
-    document.getElementById('status').textContent = '位置情報の取得に失敗しました';
-  });
+    setStatus('位置情報の取得に失敗しました。設定を確認してください。');
+  }, { timeout: 10000 });
 }
 
 function renderTaikin(app) {
   app.innerHTML = `
     <h2>退勤打刻</h2>
-    <div class="status" id="status">退勤時刻を記録します</div>
-    <button class="btn btn-green" style="margin-top:16px" onclick="doTaikin()">退勤する</button>
+    <div class="section">
+      <div class="status" id="status">退勤時刻を記録します</div>
+      <button class="btn btn-red" style="margin-top:12px" onclick="doTaikin()">退勤する</button>
+    </div>
   `;
 }
 
 async function doTaikin() {
-  document.getElementById('status').textContent = '送信中...';
+  setStatus('送信中...');
   await sendToGas({ type: 'kintai', userId, stampType: '退勤', lat: 0, lng: 0 });
-  document.getElementById('status').textContent = '退勤打刻しました！';
+  setStatus('退勤打刻しました！お疲れ様でした。');
   setTimeout(() => liff.closeWindow(), 2000);
 }
 
 function renderKyukei(app) {
   app.innerHTML = `
-    <h2>休憩時間</h2>
-    <label>休憩時間を選んでください</label>
-    <div class="option-grid">
-      <div class="option-btn" onclick="selectOption(this,'0.5')">0.5時間</div>
-      <div class="option-btn" onclick="selectOption(this,'1.0')">1時間</div>
-      <div class="option-btn" onclick="selectOption(this,'1.5')">1.5時間</div>
-      <div class="option-btn" onclick="selectOption(this,'2.0')">2時間</div>
+    <h2>休憩申告</h2>
+    <div class="section">
+      <label>休憩時間を選んでください</label>
+      <div class="option-grid option-grid-4">
+        <div class="option-btn" onclick="selectKyukei(this,'0.5')">0.5時間</div>
+        <div class="option-btn" onclick="selectKyukei(this,'1.0')">1時間</div>
+        <div class="option-btn" onclick="selectKyukei(this,'1.5')">1.5時間</div>
+        <div class="option-btn" onclick="selectKyukei(this,'2.0')">2時間</div>
+      </div>
+      <div class="status" id="status">　</div>
+      <button class="btn btn-green" onclick="doKyukei()">送信する</button>
     </div>
-    <div class="status" id="status">　</div>
-    <button class="btn btn-green" style="margin-top:8px" onclick="doKyukei()">送信する</button>
   `;
 }
 
+function selectKyukei(el, value) {
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedKyukei = value;
+}
+
 async function doKyukei() {
-  if (!selectedValue) { document.getElementById('status').textContent = '時間を選択してください'; return; }
-  document.getElementById('status').textContent = '送信中...';
-  await sendToGas({ type: 'kintai', userId, stampType: '休憩', kyukeiJikan: selectedValue, lat: 0, lng: 0 });
-  document.getElementById('status').textContent = `${selectedValue}時間の休憩を記録しました！`;
+  if (!selectedKyukei) { setStatus('時間を選択してください'); return; }
+  setStatus('送信中...');
+  await sendToGas({ type: 'kintai', userId, stampType: '休憩', kyukeiJikan: selectedKyukei, lat: 0, lng: 0 });
+  setStatus(`${selectedKyukei}時間の休憩を記録しました！`);
   setTimeout(() => liff.closeWindow(), 2000);
 }
 
 function renderKekkin(app) {
   app.innerHTML = `
     <h2>当日欠勤</h2>
-    <label>欠勤理由を入力してください</label>
-    <textarea id="reason" placeholder="例：体調不良のため"></textarea>
-    <div class="status" id="status">　</div>
-    <button class="btn btn-gray" onclick="doKekkin()">送信する</button>
+    <div class="section">
+      <label>欠勤理由を入力してください</label>
+      <textarea id="reason" placeholder="例：体調不良のため"></textarea>
+      <div class="status" id="status">　</div>
+      <button class="btn btn-gray" onclick="doKekkin()">送信する</button>
+    </div>
   `;
 }
 
 async function doKekkin() {
   const reason = document.getElementById('reason').value.trim();
-  if (!reason) { document.getElementById('status').textContent = '理由を入力してください'; return; }
-  document.getElementById('status').textContent = '送信中...';
+  if (!reason) { setStatus('理由を入力してください'); return; }
+  setStatus('送信中...');
   await sendToGas({ type: 'kintai', userId, stampType: '当日欠勤', reason, lat: 0, lng: 0 });
-  document.getElementById('status').textContent = '欠勤を申請しました';
+  setStatus('欠勤を申請しました');
   setTimeout(() => liff.closeWindow(), 2000);
 }
 
 function renderYukyu(app) {
   const dates = [];
   const today = new Date();
+  const dayNames = ['日','月','火','水','木','金','土'];
   for (let i = 1; i <= 30; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dayNames = ['日','月','火','水','木','金','土'];
     const label = `${d.getMonth()+1}/${d.getDate()}（${dayNames[d.getDay()]}）`;
     const value = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
     dates.push({ label, value });
   }
   app.innerHTML = `
     <h2>有給申請</h2>
-    <label>① 取得日を選んでください</label>
-    <div class="date-grid" style="margin-bottom:16px">
-      ${dates.map(d => `<div class="date-btn" onclick="selectDate(this,'${d.value}')">${d.label}</div>`).join('')}
+    <div class="section">
+      <label>① 取得日を選んでください</label>
+      <div class="date-grid">
+        ${dates.map(d => `<div class="date-btn" onclick="selectYukyuDate(this,'${d.value}')">${d.label}</div>`).join('')}
+      </div>
     </div>
-    <label>② 種別を選んでください</label>
-    <div class="option-grid" style="grid-template-columns:1fr 1fr 1fr">
-      <div class="option-btn" onclick="selectType(this,'全休')">全休</div>
-      <div class="option-btn" onclick="selectType(this,'午前休')">午前休</div>
-      <div class="option-btn" onclick="selectType(this,'午後休')">午後休</div>
+    <div class="section">
+      <label>② 種別を選んでください</label>
+      <div class="option-grid option-grid-3">
+        <div class="option-btn" onclick="selectYukyuType(this,'全休')">全休</div>
+        <div class="option-btn" onclick="selectYukyuType(this,'午前休')">午前休</div>
+        <div class="option-btn" onclick="selectYukyuType(this,'午後休')">午後休</div>
+      </div>
+      <div class="status" id="status">　</div>
+      <button class="btn btn-blue" onclick="doYukyu()">申請する</button>
     </div>
-    <div class="status" id="status">　</div>
-    <button class="btn btn-blue" onclick="doYukyu()">申請する</button>
   `;
 }
 
-let selectedDate = '';
-let selectedType = '';
-
-function selectDate(el, value) {
+function selectYukyuDate(el, value) {
   document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
   selectedDate = value;
 }
 
-function selectType(el, value) {
+function selectYukyuType(el, value) {
   document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
   el.classList.add('selected');
-  selectedType = value;
-}
-
-function renderYukyu(app) {
-  const dates = [];
-  const today = new Date();
-  for (let i = 1; i <= 30; i++) {
-    const d = new Date(today);
-    d.setDate(today.getDate() + i);
-    const dayNames = ['日','月','火','水','木','金','土'];
-    const label = `${d.getMonth()+1}/${d.getDate()}（${dayNames[d.getDay()]}）`;
-    const value = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
-    dates.push({ label, value });
-  }
-  app.innerHTML = `
-    <h2>有給申請</h2>
-    <label>① 取得日を選んでください</label>
-    <div class="date-grid" style="margin-bottom:16px">
-      ${dates.map(d => `<div class="date-btn" onclick="selectDate(this,'${d.value}')">${d.label}</div>`).join('')}
-    </div>
-    <label>② 種別を選んでください</label>
-    <div class="option-grid" style="grid-template-columns:1fr 1fr 1fr">
-      <div class="option-btn" onclick="selectType(this,'全休')">全休</div>
-      <div class="option-btn" onclick="selectType(this,'午前休')">午前休</div>
-      <div class="option-btn" onclick="selectType(this,'午後休')">午後休</div>
-    </div>
-    <div class="status" id="status">　</div>
-    <button class="btn btn-blue" onclick="doYukyu()">申請する</button>
-  `;
-}
-
-let selectedDate = '';
-let selectedType = '';
-
-function selectDate(el, value) {
-  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedDate = value;
-}
-
-function selectType(el, value) {
-  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedType = value;
+  selectedYukyuType = value;
 }
 
 async function doYukyu() {
-  if (!selectedDate) { document.getElementById('status').textContent = '日付を選択してください'; return; }
-  if (!selectedType) { document.getElementById('status').textContent = '種別を選択してください'; return; }
-  document.getElementById('status').textContent = '送信中...';
-  await sendToGas({ type: 'kintai', userId, stampType: '有給申請', yukyuDate: selectedDate, yukyuType: selectedType, lat: 0, lng: 0 });
-  document.getElementById('status').textContent = `${selectedDate} ${selectedType}を申請しました`;
+  if (!selectedDate) { setStatus('日付を選択してください'); return; }
+  if (!selectedYukyuType) { setStatus('種別を選択してください'); return; }
+  setStatus('送信中...');
+  await sendToGas({
+    type: 'kintai',
+    userId,
+    stampType: '有給申請',
+    yukyuDate: selectedDate,
+    yukyuType: selectedYukyuType,
+    lat: 0,
+    lng: 0
+  });
+  setStatus(`${selectedDate} ${selectedYukyuType}を申請しました`);
   setTimeout(() => liff.closeWindow(), 2000);
 }
 
 function renderMemo(app) {
   app.innerHTML = `
     <h2>メモ</h2>
-    <label>内容を入力してください</label>
-    <textarea id="memo" placeholder="例：午後から外出予定"></textarea>
-    <div class="status" id="status">　</div>
-    <button class="btn btn-gray" onclick="doMemo()">送信する</button>
+    <div class="section">
+      <label>内容を入力してください</label>
+      <textarea id="memo" placeholder="例：午後から外出予定"></textarea>
+      <div class="status" id="status">　</div>
+      <button class="btn btn-gray" onclick="doMemo()">送信する</button>
+    </div>
   `;
 }
 
 async function doMemo() {
   const memo = document.getElementById('memo').value.trim();
-  if (!memo) { document.getElementById('status').textContent = '内容を入力してください'; return; }
-  document.getElementById('status').textContent = '送信中...';
+  if (!memo) { setStatus('内容を入力してください'); return; }
+  setStatus('送信中...');
   await sendToGas({ type: 'kintai', userId, stampType: 'メモ', memo, lat: 0, lng: 0 });
-  document.getElementById('status').textContent = 'メモを送信しました';
+  setStatus('メモを送信しました');
   setTimeout(() => liff.closeWindow(), 2000);
 }
 
-function selectOption(el, value) {
-  document.querySelectorAll('.option-btn, .date-btn').forEach(b => b.classList.remove('selected'));
-  el.classList.add('selected');
-  selectedValue = value;
+function setStatus(msg) {
+  const el = document.getElementById('status');
+  if (el) el.textContent = msg;
 }
 
 async function sendToGas(payload) {
