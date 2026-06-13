@@ -179,6 +179,49 @@ function selectType(el, value) {
   selectedType = value;
 }
 
+function renderYukyu(app) {
+  const dates = [];
+  const today = new Date();
+  for (let i = 1; i <= 30; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const dayNames = ['日','月','火','水','木','金','土'];
+    const label = `${d.getMonth()+1}/${d.getDate()}（${dayNames[d.getDay()]}）`;
+    const value = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    dates.push({ label, value });
+  }
+  app.innerHTML = `
+    <h2>有給申請</h2>
+    <label>① 取得日を選んでください</label>
+    <div class="date-grid" style="margin-bottom:16px">
+      ${dates.map(d => `<div class="date-btn" onclick="selectDate(this,'${d.value}')">${d.label}</div>`).join('')}
+    </div>
+    <label>② 種別を選んでください</label>
+    <div class="option-grid" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="option-btn" onclick="selectType(this,'全休')">全休</div>
+      <div class="option-btn" onclick="selectType(this,'午前休')">午前休</div>
+      <div class="option-btn" onclick="selectType(this,'午後休')">午後休</div>
+    </div>
+    <div class="status" id="status">　</div>
+    <button class="btn btn-blue" onclick="doYukyu()">申請する</button>
+  `;
+}
+
+let selectedDate = '';
+let selectedType = '';
+
+function selectDate(el, value) {
+  document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedDate = value;
+}
+
+function selectType(el, value) {
+  document.querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedType = value;
+}
+
 async function doYukyu() {
   if (!selectedDate) { document.getElementById('status').textContent = '日付を選択してください'; return; }
   if (!selectedType) { document.getElementById('status').textContent = '種別を選択してください'; return; }
